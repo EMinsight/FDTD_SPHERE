@@ -8,12 +8,12 @@
 #include <Eigen/Core>
 
 #include "fdtd3d.h"
-//#include <mpi.h>
+#include <mpi.h>
 
 //The number of R, Theta, Phi element//
 const int Nr{100};
 const int Ntheta{100};
-const int Nphi{600};
+const int Nphi{1000};
 
 constexpr double R_r{100.0e3};
 
@@ -66,7 +66,7 @@ const double Azim{61.0*M_PI/180.0};
 int main(int argc, char** argv)
 {
   int flag(0);
-  int time_step = 1200;
+  int time_step = 2000;
   double t;
   double J;
   double time_1, time_2, total_time;
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
   ofs_4.open("./dat_file/fourie.dat");
 
   std::ofstream ofs_5;
-  ofs_5.open("./dat_file/gain_graph.dat");
+  ofs_5.open("./dat_file/gain.dat");
 
   std::ofstream ofs_j;
   ofs_j.open("./dat_file/J_value.dat");
@@ -290,19 +290,25 @@ int main(int argc, char** argv)
   ofs_3 << 0 << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
 
   //start up mpi//
-  /*MPI::Init(argc, argv);
+  MPI::Init(argc, argv);
   int rank = MPI::COMM_WORLD.Get_rank();
   int size = MPI::COMM_WORLD.Get_size();
 
   //The num of process//
   if(rank == 0) std::cout << size << "process." << std::endl;
 
-  int band = Nr/size;
-  int mod = Nr%size;*/
+  const int band{Nr/size};
+  const int mod{Nr%size};
 
   std::cout << "R : " << dist(Nr) << " θ : " << R0*delta_theta*Ntheta << " φ : " << R0*delta_phi*Nphi << std::endl;
   std::cout << "time_step : " << time_step << " Dt : " << Dt << std::endl;
   std::cout << "_______________________________________" << std::endl;
+
+  if(rank == 0){
+    std::cout << "band : " << band <<  "\tmod : " << mod << std::endl;
+    MPI::Finalize();
+    std::exit(0);
+  }
   
   ////////計測開始////////
   std::chrono::system_clock::time_point start
