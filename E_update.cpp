@@ -7,7 +7,7 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
               double**** D_r, double**** D_theta, double**** D_phi,
               int NEW, int OLD, double*** sigma_car, double*** sigma_car_r,
               double ****Cmat_r, double ****Fmat_r, double ****Cmat_th, double ****Fmat_th,
-              double ****Cmat_phi, double ****Fmat_phi)
+              double ****Cmat_phi, double ****Fmat_phi, int idx1, int idx1_dash, int idx2)
 {
   double theta(0.0), phi(0.0);
   double maxE(0.0);
@@ -18,7 +18,9 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
   int iono_flag(0);
   int I, J, K;
 
-  for(int i = 0; i < Nr - ion_L; i++){
+  //Er update//
+  for(int i = idx1; i < idx2; i++){
+    if(i >= Nr - ion_L) break;
     for(int j = 1; j < Ntheta; j++){
       for(int k = 1; k < Nphi; k++){
         E_r[NEW][i][j][k] = E_r[OLD][i][j][k] + (D_r[NEW][i][j][k] - D_r[OLD][i][j][k])/EPS0;
@@ -35,8 +37,9 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
     }
   }
 
-   iono_flag = 1;
-  for(int i = Nr - ion_L; i < Nr; i++){
+  iono_flag = 1;
+  for(int i = idx1; i < idx2; i++){
+    if(i < Nr - ion_L) break;
     for(int j = 1; j < Ntheta; j++){
       for(int k = 1; k < Nphi; k++){
           phi = k*delta_phi;
@@ -71,7 +74,9 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
     }
   }
 
-  for(int i = 1; i < Nr - ion_L; i++){
+  //Etheta update//
+  for(int i = idx1_dash; i < idx2; i++){
+    if(i >= Nr - ion_L) break;
     for(int j = 0; j < Ntheta; j++){
       for(int k = 1; k < Nphi; k++){
         E_theta[NEW][i][j][k] = E_theta[OLD][i][j][k] + (D_theta[NEW][i][j][k] - D_theta[OLD][i][j][k])/EPS0;
@@ -89,7 +94,8 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
   }
 
    iono_flag = 2;
-  for(int i = Nr - ion_L; i < Nr; i++){
+  for(int i = idx1_dash; i < idx2; i++){
+    if(i < Nr - ion_L) break;
     for(int j = 0; j < Ntheta; j++){
       theta = th(j + 0.5);
       for(int k = 1; k < Nphi; k++){
@@ -125,7 +131,9 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
     } 
   }
 
-  for(int i = 1; i < Nr - ion_L; i++){
+  //Ephi update//
+  for(int i = idx1_dash; i < idx2; i++){
+    if(i >= Nr - ion_L) break;
     for(int j = 1; j < Ntheta; j++){
       for(int k = 0; k < Nphi; k++){
         E_phi[NEW][i][j][k] = E_phi[OLD][i][j][k] + (D_phi[NEW][i][j][k] - D_phi[OLD][i][j][k])/EPS0;
@@ -143,7 +151,8 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
   }
 
   iono_flag = 3;
-  for(int i = Nr - ion_L; i < Nr; i++){
+  for(int i = idx1_dash; i < idx2; i++){
+    if(i < ion_L - L) break;
     for(int j = 1; j < Ntheta; j++){
       theta = th(j);
       for(int k = 0; k < Nphi; k++){
@@ -180,20 +189,5 @@ void E_update(double**** E_r, double**** E_theta, double**** E_phi,
   }
   
   if(maxE > 1.0e12) exit(0);
-  // output "maxE" //
-  switch(flag){
-    case 1:
-    std::cout << "max  E_r[" << I << "][" << J << "][" << K <<"] = " << maxE << std::endl;
-    break;
-
-    case 2:
-    std::cout << "max  E_th[" << I << "][" << J << "][" << K << "] = " << maxE << std::endl;
-    break;
-
-    case 3:
-    std::cout << "max  E_phi[" << I << "][" << J << "][" << K << "] = " << maxE << std::endl;
-    break;
-
-  }
 
 }

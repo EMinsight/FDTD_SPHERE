@@ -4,14 +4,15 @@
 #include "fdtd3d.h"
 
 void H_update(double*** E_r, double*** E_theta, double*** E_phi, 
-              double*** H_r, double*** H_theta, double*** H_phi)
+              double*** H_r, double*** H_theta, double*** H_phi,
+              int idx1, int idx1_dash, int idx2)
 {
   double val_1, val_2;
   double ri_1, ri_2, ri_3;
   double sin_th1, sin_th2, sin_th3;
   
   //update H outside PML area//
-  for(int i = 0; i < Nr + 1; i++){
+  for(int i = idx1; i < idx2; i++){
     ri_1 = dist(i);
     for(int j = L; j < Ntheta - L; j++){
       sin_th1 = std::sin(th(j));
@@ -29,7 +30,7 @@ void H_update(double*** E_r, double*** E_theta, double*** E_phi,
   }
 
   //Without surface (i:0 ~ Nr - 1 -> i:1 ~ Nr - 1 ni henkousitemasu)
-  for(int i = 1; i < Nr; i++){
+  for(int i = idx1_dash; i < idx2; i++){
     ri_1 = dist(i);
     ri_2 = dist(i+0.5);
     ri_3 = dist(i+1.0);
@@ -47,7 +48,7 @@ void H_update(double*** E_r, double*** E_theta, double*** E_phi,
   }
   
   //Without surface (i:0 ~ Nr - 1 -> i:1 ~ Nr - 1 ni henkousitemasu)
-  for(int i = 1; i < Nr; i++){
+  for(int i = idx1_dash; i < idx2; i++){
     ri_1 = dist(i);
     ri_2 = dist(i+0.5);
     ri_3 = dist(i+1.0);

@@ -170,17 +170,6 @@ int main(int argc, char** argv)
 
   geo_mag(geo_B, sph_B);
 
-  /*std::ofstream ofs_geo("geo_distribute.dat");
-
-  for(int j = 0; j < Ntheta; j += 25){
-    for(int k = 0; k < Nphi; k += 25){
-      ofs_geo << j << " " << k << " " << sph_B[1] << " " << sph_B[2] << std::endl;
-    }
-  }
-
-  std::cout << "Test output geomag distribution" << std::endl;
-  exit(0);*/
-
   B_th = std::acos(-sph_B[1]/B_abs);
   B_phi = std::atan2(sph_B[2], sph_B[0]);
 
@@ -299,16 +288,24 @@ int main(int argc, char** argv)
 
   const int band{Nr/size};
   const int mod{Nr%size};
+  int idx1, idx2, idx1_dash;
+  if(rank < mod){
+    idx1 = rank * (band + 1);
+    idx1_dash = rank * (band + 1);
+    idx2 = (rank + 1) * (band + 1);
+  } else{
+    idx1 = rank * band + mod;
+    idx2 = (rank + 1) * band + mod;
+  }
+  if( rank == 0){
+    idx1_dash = 1;
+  }
 
   std::cout << "R : " << dist(Nr) << " θ : " << R0*delta_theta*Ntheta << " φ : " << R0*delta_phi*Nphi << std::endl;
   std::cout << "time_step : " << time_step << " Dt : " << Dt << std::endl;
   std::cout << "_______________________________________" << std::endl;
 
-  if(rank == 0){
-    std::cout << "band : " << band <<  "\tmod : " << mod << std::endl;
-    MPI::Finalize();
-    std::exit(0);
-  }
+  if(rank == 0) std::cout << size << " processes." << std::endl;
   
   ////////計測開始////////
   std::chrono::system_clock::time_point start
@@ -324,72 +321,72 @@ int main(int argc, char** argv)
     t = n*Dt;
     
     //Forced current//
+    if( (idx1 <= i_0 && i_0 < idx2) || (idx1_dash <= i_0 && i_0 < idx2) ){
     J = -((t - t0)/sigma_t/sigma_t/delta_r/(dist(i_s + 0.5)*delta_theta)/(dist(i_s + 0.5)*delta_phi))
       *std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t);
-    //J = -((t - t0)/sigma_t/sigma_t/delta_r/(delta_theta)/(delta_phi))
-    //  *std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t);
+    }
     //if(t < t0) J = std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t)*std::sin(2.0*M_PI*freq*t);
     //else J = std::sin(2.0*M_PI*freq*t);
+
     std::cout << " J = " << J << std::endl;
 
     ofs_j << t << " " << J << std::endl;
 
     Etheta[OLD][i_s][j_s][k_s] = Etheta[OLD][i_s][j_s][k_s] + J;
     
-    // std::cout << "Etheta[" << i_s << "][" << j_s << "][" << k_s << "] = " << Etheta[NEW][i_s][j_s][k_s] << std::endl;
-    //std::cout << "Etheta[" << Nr - ion_L << "][" << j_0 << "][" << k_0 << "] = " << Etheta[NEW][Nr - ion_L][j_0][k_0] << std::endl;
-    std::cout << "E[1][" << Ntheta/2 << "][" << 30 << "] = " << Etheta[NEW][1][Ntheta/2][30] << std::endl;
+    std::cout << "Etheta[" << i_s << "][" << j_s << "][" << k_s << "] = " << Etheta[NEW][i_s][j_s][k_s] << std::endl;
+    std::cout << "Etheta[" << Nr - ion_L << "][" << j_0 << "][" << k_0 << "] = " << Etheta[NEW][Nr - ion_L][j_0][k_0] << std::endl;
 
     /////   D, E update   /////
     //outside PML//
-    D_update(Dr, Dtheta, Dphi, Hr, Htheta, Hphi, NEW, OLD);
+    D_update(Dr, Dtheta, Dphi, Hr, Htheta, Hphi, NEW, OLD, idx1, idx1_dash, idx2);
     
     //inside PML//
     D_update_pml(Dr[NEW], Dtheta[NEW], Dphi[NEW], Hr, Htheta, Hphi, 
     Dr_theta1, Dr_theta2, Dr_phi, Dtheta_phi, Dtheta_r, Dphi_r, Dphi_theta, 
-    sigma_theta, sigma_phi);
+    sigma_theta, sigma_phi, idx1, idx1_dash, idx2);
     
     //update E using D//
     E_update( Er, Etheta, Ephi, Dr, Dtheta, Dphi, NEW, OLD,
              sigma_cartesian, sigma_cartesian_r, Cmat_r, Fmat_r,
-             Cmat_th, Fmat_th, Cmat_phi, Fmat_phi);
+             Cmat_th, Fmat_th, Cmat_phi, Fmat_phi, idx1, idx1_dash, idx2);
 
     //data transport (PE n) idx2 >> (PE n - 1) idx1//
-    /*if(rank != 0){
-      MPI::COMM_WORLD.Send(Er[NEW][idx1], (Ntheta + 1)*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
-      MPI::COMM_WORLD.Send(Etheta[NEW][idx1], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 1);
-      MPI::COMM_WORLD.Send(Ephi[NEW][idx1], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 2);
+    if( rank != 0 ){
+      MPI::COMM_WORLD.Send(Etheta[NEW][idx1][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Send(Ephi[NEW][idx1][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
     }
-    if(rank < size - 1){
-      MPI::COMM_WORLD.Recv(Er[NEW][idx2], (Ntheta + 1)*(Nphi + 1), MPI::DOUBLE, rank + 1, 0);
-      MPI::COMM_WORLD.Recv(Etheta[NEW][idx2], Ntheta*(Nphi + 1), MPI::DOUBLE, rank + 1, 1);
-      MPI::COMM_WORLD.Recv(Ephi[NEW][idx2], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank + 1, 2);
-    }*/
+
+    if( rank < size - 1 ){
+      MPI::COMM_WORLD.Recv(Etheta[NEW][idx2][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Recv(Ephi[NEW][idx2][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
+    }
 
     /////   H update   /////
     //outside PML//
-    H_update(Er[NEW], Etheta[NEW], Ephi[NEW], Hr, Htheta, Hphi);
+    H_update(Er[NEW], Etheta[NEW], Ephi[NEW], Hr, Htheta, Hphi, idx1, idx1_dash, idx2);
     
     //inside PML//
     H_update_pml(Er[NEW], Etheta[NEW], Ephi[NEW], Hr, Htheta, Hphi, 
     Hr_theta1, Hr_theta2, Hr_phi, Htheta_phi, Htheta_r, Hphi_r, Hphi_theta, 
-    sigma_theta_h, sigma_phi_h);
+    sigma_theta_h, sigma_phi_h, idx1, idx1_dash, idx2);
 
     //surface Ground//
+    if((idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2)){
     surface_H_update(Er[NEW][0], Etheta[NEW][1], Ephi[NEW][1], Htheta[0], Hphi[0],
                     Z_real, Z_imag);
+    }
 
     //data transport (PE n) idx2 >> (PE n-1) idx1//
-    /*if(rank < size - 1){
-      MPI::COMM_WORLD.Send(Hr[NEW][idx2], Ntheta*Nphi, MPI::DOUBLE, rank + 1, 0);
-      MPI::COMM_WORLD.Send(Htheta[NEW][idx2], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank + 1, 1);
-1      MPI::COMM_WORLD.Send(Hphi[NEW][idx2], Ntheta*(Nphi + 1), MPI::DOUBLE, rank + 1, 2);
+    if( rank < size - 1 ){
+      MPI::COMM_WORLD.Send(Htheta[idx2 - 1][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank + 1, 0);
+      MPI::COMM_WORLD.Send(Hphi[idx2 - 1][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank + 1, 0);
     }
-    if(rank != 0){
-      MPI::COMM_WORLD.Recv(Hr[NEW][idx1], Ntheta*Nphi, MPI::DOUBLE, rank - 1, 0);
-      MPI::COMM_WORLD.Recv(Htheta[NEW][idx1], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 1);
-      MPI::COMM_WORLD.Recv(Hphi[NEW][idx1], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 2)
-    }*/
+
+    if( rank != 0 ){
+      MPI::COMM_WORLD.Recv(Htheta[idx1 - 1][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Recv(Hphi[idx1 - 1][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
+    }
     
     std::string fn = "./dat_file/E" + std::to_string(n) + ".dat";
     ofs_1.open(fn);
@@ -409,20 +406,22 @@ int main(int argc, char** argv)
     ofs_2 << t << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
     ofs_3 << t << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
 
-    for(int k = 0; k < Nphi; k++){
-      E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*t)*Dt;
+    if((idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2)){
+      for(int k = 0; k < Nphi; k++){
+        E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*t)*Dt;
+      }
     }
     
-    std::cout << n << " / " << time_step << std::endl << std::endl;
+    if(rank == 0) std::cout << n << " / " << time_step << std::endl << std::endl;
     
   }
   
+  MPI::Finalize();
+
   std::chrono::system_clock::time_point end
     = std::chrono::system_clock::now();
   ///////計測終了///////
 
-  //MPI::Finalize();
-  
   total_time = std::chrono::duration_cast <std::chrono::milliseconds>
     (end - start).count();
   

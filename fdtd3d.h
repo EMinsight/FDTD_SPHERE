@@ -66,19 +66,19 @@ void sigma_calc(double* sigma_theta, double* sigma_phi,
 
 void D_update(double**** Dr, double**** Dtheta, double**** Dphi,
               double*** Hr_at_n_minus_halfDt, double*** Htheta_at_n_minus_halfDt, double*** Hphi_n_minus_halfDt,
-              int num_of_new, int num_of_old);
+              int num_of_new, int num_of_old, int index1, int index1_dash, int index2);
 
 void D_update_pml(double*** Dr_at_nDt, double*** Dtheta_at_nDt, double*** Dphi_at_nDt,
 		              double*** Hr_at_n_minus_halfDt, double*** Htheta_at_n_minus_halfDt, double*** Hphi_n_minus_halfDt,
 		              double**** Dr_theta1_n_minus_oneDt, double**** Dr_theta2_n_minus_halfDt, double**** Dr_phi_n_minus_oneDt,
 		              double**** Dtheta_phi_at_n_minus_oneDt, double**** Dtheta_r_at_n_minus_oneDt,
 		              double**** Dphi_r_at_n_minus_oneDt, double**** Dphi_theta_n_minus_oneDt,
-                  double* sigma_theta, double* sigma_phi);
+                  double* sigma_theta, double* sigma_phi, int index1, int index1_dash, int index2);
 
 void E_update(double**** Er, double**** Etheta, double**** Ephi, double**** Dr, double**** Dtheta, double**** Dphi,
               int num_of_new, int num_of_old, double*** Sigma_cartesian, double*** Sigma_cartesian_r,
               double**** Cmatrix_in_r_comp, double**** Fmatrix_in_r_comp, double**** Cmatrix_in_th_comp, double**** Fmatrix_in_th_comp,
-              double**** Cmatrix_in_phi_comp, double**** Fmatrix_in_phi_comp);
+              double**** Cmatrix_in_phi_comp, double**** Fmatrix_in_phi_comp, int index1, int index1_dash, int index2);
 
 double E_update_iono(double** Sigma_cartesian, double Value_of_Er, double Value_of_Etheta, double Value_of_Ephi,
                      double Value_of_NewDr, double Value_of_NewDtheta, double Value_of_NewDphi,
@@ -86,14 +86,15 @@ double E_update_iono(double** Sigma_cartesian, double Value_of_Er, double Value_
                      int Flag, double* Cmatrix, double* Fmatrix);
 
 void H_update(double*** Er_at_nDt, double*** Etheta_at_nDt, double*** Ephi_at_nDt,
-              double*** Hr_at_n_minus_halfDt, double*** Htheta_at_n_minus_halfDt, double*** Hphi_at_n_minus_halfDt);
+              double*** Hr_at_n_minus_halfDt, double*** Htheta_at_n_minus_halfDt, double*** Hphi_at_n_minus_halfDt,
+              int index1, int index1_dash, int index2);
 
 void H_update_pml(double*** Er_at_nDt, double*** Etheta_at_nDt, double*** Ephi_at_n_Dt,
 		              double*** Hr_at_n_minus_halfDt, double*** Htheta_at_n_minus_halfDt, double*** Hphi_at_n_minus_halfDt,
 		              double**** Hr_theta1_at_n_minus_halfDt, double**** Hr_theta2_at_n_minus_halfDt, double**** Hr_phi_at_n_minus_halfDt,
 		              double**** Htheta_phi_at_n_minus_halfDt, double**** Htheta_r_at_n_minus_halfDt,
 		              double**** Hphi_r_at_n_minus_halfDt, double**** Hphi_theta_at_n_minus_halfDt,
-		              double* Sigma_theta_half, double* Sigma_phi_half);
+		              double* Sigma_theta_half, double* Sigma_phi_half, int index1, int index1_dash, int index2);
 
 void Ne_allocate(double* Electron_density, double* Electron_Density_half, 
                   double* Electron_Temperature, double* Electron_Temperature_half);

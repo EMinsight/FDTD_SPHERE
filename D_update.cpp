@@ -5,14 +5,14 @@
 
 void D_update(double**** D_r, double**** D_theta, double**** D_phi, 
               double*** H_r, double*** H_theta, double*** H_phi, 
-              int NEW, int OLD)
+              int NEW, int OLD, int idx1, int idx1_dash, int idx2)
 {
   double val_1, val_2;
   double ri_1, ri_2, ri_3;
   double sin_th1, sin_th2, sin_th3;
   
   //D update (outside PML)//
-  for(int i = 0; i < Nr; i++){
+  for(int i = idx1; i < idx2; i++){
     ri_2 = dist(i + 0.5);
     for(int j = L + 1; j < Ntheta - L; j++){
       sin_th1 = std::sin(th(j));
@@ -28,7 +28,7 @@ void D_update(double**** D_r, double**** D_theta, double**** D_phi,
     }
   }
   
-  for(int i = 1; i < Nr - 1; i++){
+  for(int i = idx1_dash; i < idx2; i++){
     ri_1 = dist(i);
     ri_2 = dist(i + 0.5);
     ri_3 = dist(i - 0.5);
@@ -44,7 +44,7 @@ void D_update(double**** D_r, double**** D_theta, double**** D_phi,
     }
   }
   
-  for(int i = 1; i < Nr - 1; i++){
+  for(int i = idx1_dash; i < idx2; i++){
     ri_1 = dist(i);
     ri_2 = dist(i + 0.5);
     ri_3 = dist(i - 0.5);
