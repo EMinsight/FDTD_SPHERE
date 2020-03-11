@@ -409,7 +409,8 @@ int main(int argc, char** argv)
     if( (idx1 <= i_r && i_r < idx2 ) || (idx1_dash <= i_r && i_r < idx2) ) ofs_2 << t << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
     if( (idx1 <= i_s && i_s < idx2 ) || (idx1_dash <= i_s && i_s < idx2) ) ofs_3 << t << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
 
-    if((idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2)){
+    
+    if( rank == 0 ){
       for(int k = k_s; k < k_r; k++){
         E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*t)*Dt;
       }
