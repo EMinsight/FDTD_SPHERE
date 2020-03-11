@@ -173,8 +173,6 @@ int main(int argc, char** argv)
   B_th = std::acos(-sph_B[1]/B_abs);
   B_phi = std::atan2(sph_B[2], sph_B[0]);
 
-  std::cout << "B_theta = " << B_th << "\tB_phi = " << B_phi << std::endl;
-
   //Ne, nyu//
   double *Nh = new double[ion_L];
   double *ny = new double[ion_L];
@@ -254,62 +252,67 @@ int main(int argc, char** argv)
   ofs_j.open("./dat_file/J_value.dat");
 
   std::complex <double> *E_famp;
-  E_famp = new std::complex<double> [Nphi + 1];
-  for(int i = 0; i <= Nphi; i++) E_famp[i] = (0.0, 0.0);
-
-  t = Dt*0;
-
-  for(int k = L; k < Nphi - L; k++){
-    double Phi = R0*k*delta_phi/1000.0;
-    for(int i = 0; i < Nr; i++){
-      double R = i*delta_r/1000.0;
-      ofs_1 << Phi << " " << R << " " << Er[NEW][i][j_s][k] << std::endl;
-    }
-    ofs_1 << std::endl;
-  }
-
-  ofs_1.close();
-
-  //fourie//
-  for(int k = 0; k < Nphi; k++){
-    E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*0.0)*Dt;
-  }
-
-  ofs_2 << 0 << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
-  ofs_3 << 0 << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
 
   //start up mpi//
   MPI::Init(argc, argv);
   int rank = MPI::COMM_WORLD.Get_rank();
   int size = MPI::COMM_WORLD.Get_size();
 
-  //The num of process//
-  if(rank == 0) std::cout << size << "process." << std::endl;
+  if(rank == 0) std::cout << size << "process." << std::endl; 
 
-  const int band{Nr/size};
-  const int mod{Nr%size};
+  const int band{ Nr/size };
+  const int mod{ Nr%size };
   int idx1, idx2, idx1_dash;
-  if(rank < mod){
+
+  if( rank < mod ){
     idx1 = rank * (band + 1);
     idx1_dash = rank * (band + 1);
     idx2 = (rank + 1) * (band + 1);
   } else{
     idx1 = rank * band + mod;
+    idx1_dash = rank * band + mod;
     idx2 = (rank + 1) * band + mod;
   }
-  if( rank == 0){
+  if( rank == 0 ){
     idx1_dash = 1;
   }
 
-  std::cout << "R : " << dist(Nr) << " θ : " << R0*delta_theta*Ntheta << " φ : " << R0*delta_phi*Nphi << std::endl;
-  std::cout << "time_step : " << time_step << " Dt : " << Dt << std::endl;
-  std::cout << "_______________________________________" << std::endl;
-
-  if(rank == 0) std::cout << size << " processes." << std::endl;
+  if(rank == 0){
+    std::cout << "B_theta = " << B_th << "\tB_phi = " << B_phi << std::endl;
+    std::cout << "R : " << dist(Nr) << " θ : " << R0*delta_theta*Ntheta << " φ : " << R0*delta_phi*Nphi << std::endl;
+    std::cout << "time_step : " << time_step << " Dt : " << Dt << std::endl;
+    std::cout << "_______________________________________" << std::endl;
+  }
   
   ////////計測開始////////
   std::chrono::system_clock::time_point start
     = std::chrono::system_clock::now();
+
+  if( rank == 0 ){
+    E_famp = new std::complex<double> [Nphi + 1];
+    for(int i = 0; i <= Nphi; i++) E_famp[i] = (0.0, 0.0);
+
+    t = Dt*0;
+
+    for(int k = L; k < Nphi - L; k++){
+      double Phi = R0*k*delta_phi/1000.0;
+        for(int i = 0; i < Nr; i++){
+          double R = i*delta_r/1000.0;
+          ofs_1 << Phi << " " << R << " " << Er[NEW][i][j_s][k] << std::endl;
+      }
+      ofs_1 << std::endl;
+    }
+
+    ofs_1.close();
+
+    //fourie//
+    for(int k = 0; k < Nphi; k++){
+      E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*0.0)*Dt;
+    }
+
+    ofs_2 << 0 << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
+    ofs_3 << 0 << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
+  }
 
   //FDTD_update//
   for(int n = 1; n < time_step + 1; n++){
@@ -319,24 +322,24 @@ int main(int argc, char** argv)
     
     //t = (double(n) - 0.5)*Dt;
     t = n*Dt;
-    
+
     //Forced current//
-    if( (idx1 <= i_0 && i_0 < idx2) || (idx1_dash <= i_0 && i_0 < idx2) ){
-    J = -((t - t0)/sigma_t/sigma_t/delta_r/(dist(i_s + 0.5)*delta_theta)/(dist(i_s + 0.5)*delta_phi))
-      *std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t);
+    if( (idx1 <= i_s && i_s < idx2) || (idx1_dash <= i_s && i_s < idx2) ){
+      J = -((t - t0)/sigma_t/sigma_t/delta_r/(dist(i_s + 0.5)*delta_theta)/(dist(i_s + 0.5)*delta_phi))
+        *std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t);
+
+      std::cout << " J = " << J << std::endl;
+      ofs_j << t << " " << J << std::endl;
+      Etheta[OLD][i_s][j_s][k_s] = Etheta[OLD][i_s][j_s][k_s] + J;
+      //std::cout << "Etheta[" << i_s << "][" << j_s << "][" << k_s << "] = " << Etheta[OLD][i_s][j_s][k_s] << std::endl;
+      //std::cout << "Etheta[" << Nr - ion_L << "][" << j_0 << "][" << k_0 << "] = " << Etheta[OLD][Nr - ion_L][j_0][k_0] << std::endl;
     }
+
+    if(rank == 0) std::cout << n << " / " << time_step << std::endl << std::endl;
     //if(t < t0) J = std::exp(-(t - t0)*(t - t0)/2.0/sigma_t/sigma_t)*std::sin(2.0*M_PI*freq*t);
     //else J = std::sin(2.0*M_PI*freq*t);
 
-    std::cout << " J = " << J << std::endl;
-
-    ofs_j << t << " " << J << std::endl;
-
-    Etheta[OLD][i_s][j_s][k_s] = Etheta[OLD][i_s][j_s][k_s] + J;
-    
-    std::cout << "Etheta[" << i_s << "][" << j_s << "][" << k_s << "] = " << Etheta[NEW][i_s][j_s][k_s] << std::endl;
-    std::cout << "Etheta[" << Nr - ion_L << "][" << j_0 << "][" << k_0 << "] = " << Etheta[NEW][Nr - ion_L][j_0][k_0] << std::endl;
-
+   
     /////   D, E update   /////
     //outside PML//
     D_update(Dr, Dtheta, Dphi, Hr, Htheta, Hphi, NEW, OLD, idx1, idx1_dash, idx2);
@@ -353,13 +356,13 @@ int main(int argc, char** argv)
 
     //data transport (PE n) idx2 >> (PE n - 1) idx1//
     if( rank != 0 ){
-      MPI::COMM_WORLD.Send(Etheta[NEW][idx1][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
-      MPI::COMM_WORLD.Send(Ephi[NEW][idx1][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Send(Etheta[NEW][idx1_dash][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Send(Ephi[NEW][idx1_dash][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
     }
 
     if( rank < size - 1 ){
-      MPI::COMM_WORLD.Recv(Etheta[NEW][idx2][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank - 1, 0);
-      MPI::COMM_WORLD.Recv(Ephi[NEW][idx2][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank - 1, 0);
+      MPI::COMM_WORLD.Recv(Etheta[NEW][idx2][0], Ntheta*(Nphi + 1), MPI::DOUBLE, rank + 1, 0);
+      MPI::COMM_WORLD.Recv(Ephi[NEW][idx2][0], (Ntheta + 1)*Nphi, MPI::DOUBLE, rank + 1, 0);
     }
 
     /////   H update   /////
@@ -372,8 +375,8 @@ int main(int argc, char** argv)
     sigma_theta_h, sigma_phi_h, idx1, idx1_dash, idx2);
 
     //surface Ground//
-    if((idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2)){
-    surface_H_update(Er[NEW][0], Etheta[NEW][1], Ephi[NEW][1], Htheta[0], Hphi[0],
+    if( (idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2) ){
+      surface_H_update(Er[NEW][0], Etheta[NEW][1], Ephi[NEW][1], Htheta[0], Hphi[0],
                     Z_real, Z_imag);
     }
 
@@ -392,7 +395,7 @@ int main(int argc, char** argv)
     ofs_1.open(fn);
     std::ofstream ofs_1(fn.c_str());
 
-    for(int k = L; k < Nphi - L; k++){
+    /*for(int k = L; k < Nphi - L; k++){
       double Phi = R0*k*delta_phi/1000.0;
       for(int i = 0; i < Nr; i++){
         double R = i*delta_r/1000.0;
@@ -401,18 +404,16 @@ int main(int argc, char** argv)
       ofs_1 << std::endl;
     }
     
-    ofs_1.close();
+    ofs_1.close();*/
 
-    ofs_2 << t << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
-    ofs_3 << t << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
+    if( (idx1 <= i_r && i_r < idx2 ) || (idx1_dash <= i_r && i_r < idx2) ) ofs_2 << t << " " << Er[NEW][i_r][j_r][k_r] << std::endl;
+    if( (idx1 <= i_s && i_s < idx2 ) || (idx1_dash <= i_s && i_s < idx2) ) ofs_3 << t << " " << Er[NEW][i_s][j_s][k_s] << std::endl;
 
     if((idx1 <= 1 && 1 < idx2) || (idx1_dash <= 1 && 1 < idx2)){
-      for(int k = 0; k < Nphi; k++){
+      for(int k = k_s; k < k_r; k++){
         E_famp[k] += Er[NEW][1][Ntheta/2][k]*std::exp(-zj*omega*t)*Dt;
       }
     }
-    
-    if(rank == 0) std::cout << n << " / " << time_step << std::endl << std::endl;
     
   }
   
@@ -427,7 +428,7 @@ int main(int argc, char** argv)
   
   std::cout << "elapsed_time = " << total_time*1.0e-3 << " [sec]"<< std::endl;
 
-  for(int k = 0; k < Nphi; k++){
+  for(int k = k_s; k < k_r; k++){
     ofs_4 << R0*k*delta_phi/1000.0 << " " << std::abs(E_famp[k]) << std::endl;
   }
 
